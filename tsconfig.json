@@ -6,5 +6,6 @@
         "module": "ES2020",
         "sourceMap": false,
         "strict": true
-    }
+    },
+    "include": ["src/**/*"]
 }
