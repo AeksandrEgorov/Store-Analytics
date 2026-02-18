@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start:task1": "node dist/task1/main.js"
+  }
+}
