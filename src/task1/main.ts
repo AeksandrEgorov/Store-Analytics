@@ -1,6 +1,11 @@
-import { products, stock, reviews, suppliers, discount } from '../data/productsData.js';
+import { Discount } from '../data/models/discount.js';
+import { Product } from '../data/models/product.js';
+import { products, stock, reviews, suppliers, discounts } from '../data/productsData.js';
 
 type StockStatus = 'OUT' | 'LOW' | 'IN_STOCK';
+
+const round2 = (num: number): number => Math.round((num+Number.EPSILON) * 100) / 100;
+const f2 = (num: number): string => round2(num).toFixed(2);
 
 function getAvailable(productId: string): number {
   return stock
@@ -16,10 +21,6 @@ function getStockStatus(available: number): StockStatus {
 }
 
 //average rating
-function round2(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
 function getAverageRating(productId: string): number | null {
   const rs = reviews.filter(r => r.productId === productId);
   if (rs.length === 0) return null;
@@ -32,14 +33,56 @@ function formatRating(avg: number | null): string {
   return avg === null ? 'no reviews' : avg.toFixed(2);
 }
 
+//supplier
+function getSupplierName(supplierId: string): string {
+  return suppliers.find(s => s.id === supplierId)?.name ?? 'Unknown supplier';
+}
+
+//discount
+function getDiscount(category: Product['category']): Discount | undefined {
+  return discounts.find(d => d.category === category);
+}
+
+function applyDiscount(discount : Discount | undefined, avg: number | null): boolean {
+  if(!discount) return false;
+  if (discount.minRating === undefined) return true;
+  if (avg === null) return false;
+  return avg >= discount.minRating;
+}
+
+function formatPrice(product: Product, avg: number | null): string {
+  const discount = getDiscount(product.category);
+  const original = f2(product.price);
+  if (!applyDiscount(discount, avg)) {
+    return `price: ${original}`;
+  }
+
+  const discounted = f2(product.price * (1 - discount!.percent));
+  return `price: ${original} -> discount: ${discounted}`;
+}
+
+//specs
+function formatSpecs(product: Product): string {
+  if (!product.specs) return '';
+  const pairs = Object.entries(product.specs).map(([k, v]) => `${k}=${v}`);
+  return ` specs: ${pairs.join(', ') } | `;
+}
+
+//output
 console.log('Products:\n');
 
-for (const p of products) {
-  const available = getAvailable(p.id);
+for (const product of products) {
+  const supplierName = getSupplierName(product.supplierId);
+  const available = getAvailable(product.id);
   const status = getStockStatus(available);
-  const avg = getAverageRating(p.id);
+  const avg = getAverageRating(product.id);
+  const ratingText = formatRating(avg);
+  const priceText = formatPrice(product, avg);
+  const specsPart = product.specs ? ` specs: ${Object.entries(product.specs).map(([k, v]) => `${k}=${v}`).join(', ')} |` : '';
 
   console.log(
-    `- ${p.name} [${p.id}] | available: ${available} (${status}) | rating: ${formatRating(avg)}`
+    ` - ${product.name} [${product.id}] | ${product.category} | supplier: ${supplierName} | ` + 
+    `available: ${available} (${status}) | rating: ${ratingText} |` +
+    specsPart + ` ${priceText}`
   );
 }

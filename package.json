@@ -2,8 +2,6 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start:task1": "node dist/task1/main.js",
-    "start:task2": "npx serve ."
-
+    "start:task1": "node dist/task1/main.js"
   }
 }

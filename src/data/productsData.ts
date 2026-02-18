@@ -68,7 +68,7 @@ export const reviews: Review[] = [
   { productId: 'BOOK-TS-BASICS', rating: 3 },
 ];
 
-export const discount: Discount[] = [
+export const discounts: Discount[] = [
   { category: 'Electronics', percent: 0.1, minRating: 4.5 },
   { category: 'Accessories', percent: 0.15 },
   { category: 'Books', percent: 0.05 },
