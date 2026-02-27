@@ -4,6 +4,12 @@ import type { Product, Specs } from '../../../data/models/product';
 
 // dynamic user interface with bootstrap classes
 
+import {
+  validateAddProduct,
+  type AddProductInput,
+  type AddProductValidated,
+} from '../utils/validators.js';
+
 export interface Task2UI {
   app: HTMLElement;
 
@@ -18,7 +24,7 @@ export interface Task2UI {
   listSection: HTMLElement;
   listContainer: HTMLElement;
 
-  modalRoot: HTMLElement; // mount point for modal.ts
+  modalRoot: HTMLElement;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -144,17 +150,14 @@ export function initUI(root: HTMLElement): Task2UI {
   };
 }
 
-// form add product
-export interface AddProductPayload {
-  product: Product;
-  initialStock?: { warehouse: string; quantity: number };
-}
-
 export function buildAddProductForm(opts: {
   categories: Category[];
   suppliers: Supplier[];
   warehouses: string[];
-  onSubmit: (payload: AddProductPayload) => void;
+
+  getExistingProducts: () => Product[];
+
+  onSubmit: (payload: AddProductValidated) => void;
   onCancel: () => void;
 }): HTMLFormElement {
   const form = document.createElement('form');
@@ -182,48 +185,32 @@ export function buildAddProductForm(opts: {
     return wrap;
   };
 
-  // id
+  // ID
   const idInput = document.createElement('input');
   idInput.className = 'form-control';
   idInput.type = 'text';
   idInput.placeholder = 'e.g. ACC-USB-C-HUB';
   idInput.autocomplete = 'off';
 
-  // name
+  // Name
   const nameInput = document.createElement('input');
   nameInput.className = 'form-control';
   nameInput.type = 'text';
   nameInput.placeholder = 'Product name';
 
-  // category
+  // Category
   const categorySelect = document.createElement('select');
   categorySelect.className = 'form-select';
-  const catDefault = document.createElement('option');
-  catDefault.value = '';
-  catDefault.textContent = 'Select category…';
-  categorySelect.append(catDefault);
-  for (const c of opts.categories) {
-    const o = document.createElement('option');
-    o.value = c;
-    o.textContent = c;
-    categorySelect.append(o);
-  }
+  categorySelect.append(new Option('Select category…', ''));
+  for (const c of opts.categories) categorySelect.append(new Option(c, c));
 
-  // supplier
+  // Supplier
   const supplierSelect = document.createElement('select');
   supplierSelect.className = 'form-select';
-  const supDefault = document.createElement('option');
-  supDefault.value = '';
-  supDefault.textContent = 'Select supplier…';
-  supplierSelect.append(supDefault);
-  for (const s of opts.suppliers) {
-    const o = document.createElement('option');
-    o.value = s.id;
-    o.textContent = `${s.name} (${s.id})`;
-    supplierSelect.append(o);
-  }
+  supplierSelect.append(new Option('Select supplier…', ''));
+  for (const s of opts.suppliers) supplierSelect.append(new Option(`${s.name} (${s.id})`, s.id));
 
-  // price
+  // Price
   const priceInput = document.createElement('input');
   priceInput.className = 'form-control';
   priceInput.type = 'number';
@@ -231,13 +218,13 @@ export function buildAddProductForm(opts: {
   priceInput.min = '0';
   priceInput.placeholder = '0.00';
 
-  // specs (JSON)
+  // Specs (JSON)
   const specsInput = document.createElement('textarea');
   specsInput.className = 'form-control';
   specsInput.rows = 4;
-  specsInput.placeholder = `Optional JSON, \n{"ram":16,"cpu":"Intel i7"}`;
+  specsInput.placeholder = `Optional JSON (string/number values)\n{"ram":16,"cpu":"Intel i7"}`;
 
-  // initial stock (optional)
+  // Initial stock (optional)
   const stockRow = document.createElement('div');
   stockRow.className = 'row g-2';
 
@@ -249,16 +236,8 @@ export function buildAddProductForm(opts: {
 
   const warehouseSelect = document.createElement('select');
   warehouseSelect.className = 'form-select';
-  const whDefault = document.createElement('option');
-  whDefault.value = '';
-  whDefault.textContent = 'Warehouse (optional)…';
-  warehouseSelect.append(whDefault);
-  for (const w of opts.warehouses) {
-    const o = document.createElement('option');
-    o.value = w;
-    o.textContent = w;
-    warehouseSelect.append(o);
-  }
+  warehouseSelect.append(new Option('Warehouse (optional)…', ''));
+  for (const w of opts.warehouses) warehouseSelect.append(new Option(w, w));
 
   const qtyInput = document.createElement('input');
   qtyInput.className = 'form-control';
@@ -271,7 +250,7 @@ export function buildAddProductForm(opts: {
   qtyCol.append(field('Initial quantity', qtyInput));
   stockRow.append(whCol, qtyCol);
 
-  // buttons
+  // Buttons
   const btnRow = document.createElement('div');
   btnRow.className = 'd-flex gap-2 justify-content-end pt-2 border-top';
 
@@ -287,76 +266,56 @@ export function buildAddProductForm(opts: {
 
   btnRow.append(btnCancel, btnSubmit);
 
-  // add every input into form container
   form.append(
-    field('Product ID', idInput),
-    field('Name', nameInput),
-    field('Category', categorySelect),
-    field('Supplier', supplierSelect),
-    field('Price', priceInput),
+    field('Product ID *', idInput),
+    field('Name *', nameInput),
+    field('Category *', categorySelect),
+    field('Supplier *', supplierSelect),
+    field('Price *', priceInput),
     field('Specs (optional)', specsInput),
     stockRow,
     btnRow
   );
 
-  btnCancel.addEventListener('click', () => opts.onCancel());
+  btnCancel.addEventListener('click', opts.onCancel);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     hideError();
 
-    const id = idInput.value.trim();
-    const name = nameInput.value.trim();
-    const category = categorySelect.value as Category;
-    const supplierId = supplierSelect.value.trim();
-    const priceNum = Number(priceInput.value);
-
-    if (!id) return showError('Product ID is required.');
-    if (!name) return showError('Name is required.');
-    if (!categorySelect.value) return showError('Category is required.');
-    if (!supplierId) return showError('Supplier is required.');
-    if (!Number.isFinite(priceNum) || priceNum < 0) return showError('Price must be a number ≥ 0.');
-
-    let specs: Specs | undefined;
-    const specsRaw = specsInput.value.trim();
-    if (specsRaw) {
-      try {
-        const parsed = JSON.parse(specsRaw);
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          return showError('Specs must be a JSON object, e.g. {"ram":16}.');
-        }
-        specs = parsed as Specs;
-      } catch {
-        return showError('Specs JSON is invalid. Example: {"ram":16,"cpu":"Intel i7"}');
-      }
-    }
-
-    const warehouse = warehouseSelect.value.trim();
-    const qtyStr = qtyInput.value.trim();
-    const qtyNum = qtyStr === '' ? undefined : Number(qtyStr);
-
-    if (warehouse && qtyNum === undefined) return showError('If warehouse is set, quantity is required.');
-    if (!warehouse && qtyNum !== undefined) return showError('If quantity is set, warehouse is required.');
-    if (qtyNum !== undefined && (!Number.isFinite(qtyNum) || qtyNum < 0 || !Number.isInteger(qtyNum))) {
-      return showError('Quantity must be an integer ≥ 0.');
-    }
-
-    const product: Product = {
-      id,
-      name,
-      category,
-      supplierId,
-      price: priceNum,
-      ...(specs ? { specs } : {}),
+    const raw: AddProductInput = {
+      id: idInput.value,
+      name: nameInput.value,
+      category: categorySelect.value as any,
+      supplierId: supplierSelect.value,
+      price: priceInput.value,
+      specsRaw: specsInput.value,
+      initialWarehouse: warehouseSelect.value,
+      initialQuantity: qtyInput.value,
     };
 
-    opts.onSubmit({
-      product,
-      ...(warehouse && qtyNum !== undefined ? { initialStock: { warehouse, quantity: qtyNum } } : {}),
+    const res = validateAddProduct(raw, {
+      existingProducts: opts.getExistingProducts(),
+      suppliers: opts.suppliers,
+      categories: opts.categories,
     });
+
+    if (!res.ok) {
+      showError(res.message);
+      // optional: focus field
+      if (res.field === 'id') idInput.focus();
+      else if (res.field === 'name') nameInput.focus();
+      else if (res.field === 'category') categorySelect.focus();
+      else if (res.field === 'supplierId') supplierSelect.focus();
+      else if (res.field === 'price') priceInput.focus();
+      else if (res.field === 'specs') specsInput.focus();
+      else if (res.field === 'initialQuantity') qtyInput.focus();
+      return;
+    }
+
+    opts.onSubmit(res.value);
   });
 
   queueMicrotask(() => idInput.focus());
-
   return form;
 }

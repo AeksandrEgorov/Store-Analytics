@@ -1,11 +1,11 @@
-// events.ts connects every component with dom
+// events.ts connects every view helper with dom, a controller.
 import type { Task2UI } from './dom.js';
 import { buildAddProductForm } from './dom.js';
 import { createModal } from './modal.js';
 
-import type { Category } from '../../../data/models/category.js';
-import type { Supplier } from '../../../data/models/supplier.js';
-import type { Product } from '../../../data/models/product.js';
+import type { Category } from '../../../data/models/category';
+import type { Supplier } from '../../../data/models/supplier';
+import type { Product } from '../../../data/models/product';
 
 export type SortValue =
   | 'default'
@@ -17,13 +17,12 @@ export type SortValue =
   | 'avail_desc';
 
 export interface EventsHandlers {
-  onAddProduct?: (payload: {
-    product: Product;
-    initialStock?: { warehouse: string; quantity: number };
-  }) => void;
+  getExistingProducts: () => Product[];
 
-  onSearchChange?: (query: string) => void;
-  onSortChange?: (sort: SortValue) => void;
+  onAddProduct: (payload: { product: Product; initialStock?: { warehouse: string; quantity: number } }) => void;
+
+  onSearchChange: (query: string) => void;
+  onSortChange: (sort: SortValue) => void;
   onListVisibilityChange?: (isVisible: boolean) => void;
 }
 
@@ -33,14 +32,14 @@ export interface EventsDeps {
   warehouses: string[];
 }
 
-// show/hide list
 function setListVisible(ui: Task2UI, visible: boolean): void {
   ui.listSection.classList.toggle('d-none', !visible);
   ui.btnToggleList.textContent = visible ? 'Hide list' : 'Show list';
   ui.btnToggleList.setAttribute('aria-pressed', String(visible));
 }
 
-export function bindEvents(ui: Task2UI, handlers: EventsHandlers = {}, deps: EventsDeps): void {
+// button events
+export function bindEvents(ui: Task2UI, handlers: EventsHandlers, deps: EventsDeps): void {
   let isListVisible = true;
   setListVisible(ui, isListVisible);
 
@@ -52,36 +51,34 @@ export function bindEvents(ui: Task2UI, handlers: EventsHandlers = {}, deps: Eve
     handlers.onListVisibilityChange?.(isListVisible);
   });
 
-  // add product, build form
   ui.btnOpenAdd.addEventListener('click', () => {
     const form = buildAddProductForm({
       categories: deps.categories,
       suppliers: deps.suppliers,
       warehouses: deps.warehouses,
+      getExistingProducts: handlers.getExistingProducts,
+
       onCancel: () => modal.close(),
-      onSubmit: (payload) => {
-        handlers.onAddProduct?.(payload);
+      onSubmit: ({ product, initialStock }) => {
+        handlers.onAddProduct({ product, initialStock });
         modal.close();
       },
     });
 
-    modal.open(form, {
-      title: 'Add product',
-      onClose: () => ui.btnOpenAdd.focus(),
-    });
+    modal.open(form, { title: 'Add product', onClose: () => ui.btnOpenAdd.focus() });
   });
 
-  // search 
+  // search
   let searchTimer: number | undefined;
   ui.searchInput.addEventListener('input', () => {
     if (searchTimer) window.clearTimeout(searchTimer);
     searchTimer = window.setTimeout(() => {
-      handlers.onSearchChange?.(ui.searchInput.value.trim());
+      handlers.onSearchChange(ui.searchInput.value.trim());
     }, 150);
   });
-
+  
   // sort
   ui.sortSelect.addEventListener('change', () => {
-    handlers.onSortChange?.(ui.sortSelect.value as SortValue);
+    handlers.onSortChange(ui.sortSelect.value as SortValue);
   });
 }
