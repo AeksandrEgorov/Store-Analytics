@@ -1,3 +1,7 @@
+import type { Category } from '../../../data/models/category';
+import type { Supplier } from '../../../data/models/supplier';
+import type { Product, Specs } from '../../../data/models/product';
+
 // dynamic user interface with bootstrap classes
 
 export interface Task2UI {
@@ -138,4 +142,221 @@ export function initUI(root: HTMLElement): Task2UI {
     listContainer,
     modalRoot,
   };
+}
+
+// form add product
+export interface AddProductPayload {
+  product: Product;
+  initialStock?: { warehouse: string; quantity: number };
+}
+
+export function buildAddProductForm(opts: {
+  categories: Category[];
+  suppliers: Supplier[];
+  warehouses: string[];
+  onSubmit: (payload: AddProductPayload) => void;
+  onCancel: () => void;
+}): HTMLFormElement {
+  const form = document.createElement('form');
+  form.className = 'd-grid gap-3';
+
+  const errorBox = document.createElement('div');
+  errorBox.className = 'alert alert-danger py-2 mb-0 d-none';
+  form.append(errorBox);
+
+  const showError = (msg: string) => {
+    errorBox.textContent = msg;
+    errorBox.classList.remove('d-none');
+  };
+  const hideError = () => {
+    errorBox.textContent = '';
+    errorBox.classList.add('d-none');
+  };
+
+  const field = (labelText: string, input: HTMLElement) => {
+    const wrap = document.createElement('div');
+    const label = document.createElement('label');
+    label.className = 'form-label';
+    label.textContent = labelText;
+    wrap.append(label, input);
+    return wrap;
+  };
+
+  // id
+  const idInput = document.createElement('input');
+  idInput.className = 'form-control';
+  idInput.type = 'text';
+  idInput.placeholder = 'e.g. ACC-USB-C-HUB';
+  idInput.autocomplete = 'off';
+
+  // name
+  const nameInput = document.createElement('input');
+  nameInput.className = 'form-control';
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Product name';
+
+  // category
+  const categorySelect = document.createElement('select');
+  categorySelect.className = 'form-select';
+  const catDefault = document.createElement('option');
+  catDefault.value = '';
+  catDefault.textContent = 'Select category…';
+  categorySelect.append(catDefault);
+  for (const c of opts.categories) {
+    const o = document.createElement('option');
+    o.value = c;
+    o.textContent = c;
+    categorySelect.append(o);
+  }
+
+  // supplier
+  const supplierSelect = document.createElement('select');
+  supplierSelect.className = 'form-select';
+  const supDefault = document.createElement('option');
+  supDefault.value = '';
+  supDefault.textContent = 'Select supplier…';
+  supplierSelect.append(supDefault);
+  for (const s of opts.suppliers) {
+    const o = document.createElement('option');
+    o.value = s.id;
+    o.textContent = `${s.name} (${s.id})`;
+    supplierSelect.append(o);
+  }
+
+  // price
+  const priceInput = document.createElement('input');
+  priceInput.className = 'form-control';
+  priceInput.type = 'number';
+  priceInput.step = '0.01';
+  priceInput.min = '0';
+  priceInput.placeholder = '0.00';
+
+  // specs (JSON)
+  const specsInput = document.createElement('textarea');
+  specsInput.className = 'form-control';
+  specsInput.rows = 4;
+  specsInput.placeholder = `Optional JSON, \n{"ram":16,"cpu":"Intel i7"}`;
+
+  // initial stock (optional)
+  const stockRow = document.createElement('div');
+  stockRow.className = 'row g-2';
+
+  const whCol = document.createElement('div');
+  whCol.className = 'col-12 col-sm-7';
+
+  const qtyCol = document.createElement('div');
+  qtyCol.className = 'col-12 col-sm-5';
+
+  const warehouseSelect = document.createElement('select');
+  warehouseSelect.className = 'form-select';
+  const whDefault = document.createElement('option');
+  whDefault.value = '';
+  whDefault.textContent = 'Warehouse (optional)…';
+  warehouseSelect.append(whDefault);
+  for (const w of opts.warehouses) {
+    const o = document.createElement('option');
+    o.value = w;
+    o.textContent = w;
+    warehouseSelect.append(o);
+  }
+
+  const qtyInput = document.createElement('input');
+  qtyInput.className = 'form-control';
+  qtyInput.type = 'number';
+  qtyInput.step = '1';
+  qtyInput.min = '0';
+  qtyInput.placeholder = 'Qty';
+
+  whCol.append(field('Initial warehouse', warehouseSelect));
+  qtyCol.append(field('Initial quantity', qtyInput));
+  stockRow.append(whCol, qtyCol);
+
+  // buttons
+  const btnRow = document.createElement('div');
+  btnRow.className = 'd-flex gap-2 justify-content-end pt-2 border-top';
+
+  const btnCancel = document.createElement('button');
+  btnCancel.type = 'button';
+  btnCancel.className = 'btn btn-outline-secondary';
+  btnCancel.textContent = 'Cancel';
+
+  const btnSubmit = document.createElement('button');
+  btnSubmit.type = 'submit';
+  btnSubmit.className = 'btn btn-primary';
+  btnSubmit.textContent = 'Add product';
+
+  btnRow.append(btnCancel, btnSubmit);
+
+  // add every input into form container
+  form.append(
+    field('Product ID', idInput),
+    field('Name', nameInput),
+    field('Category', categorySelect),
+    field('Supplier', supplierSelect),
+    field('Price', priceInput),
+    field('Specs (optional)', specsInput),
+    stockRow,
+    btnRow
+  );
+
+  btnCancel.addEventListener('click', () => opts.onCancel());
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    hideError();
+
+    const id = idInput.value.trim();
+    const name = nameInput.value.trim();
+    const category = categorySelect.value as Category;
+    const supplierId = supplierSelect.value.trim();
+    const priceNum = Number(priceInput.value);
+
+    if (!id) return showError('Product ID is required.');
+    if (!name) return showError('Name is required.');
+    if (!categorySelect.value) return showError('Category is required.');
+    if (!supplierId) return showError('Supplier is required.');
+    if (!Number.isFinite(priceNum) || priceNum < 0) return showError('Price must be a number ≥ 0.');
+
+    let specs: Specs | undefined;
+    const specsRaw = specsInput.value.trim();
+    if (specsRaw) {
+      try {
+        const parsed = JSON.parse(specsRaw);
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          return showError('Specs must be a JSON object, e.g. {"ram":16}.');
+        }
+        specs = parsed as Specs;
+      } catch {
+        return showError('Specs JSON is invalid. Example: {"ram":16,"cpu":"Intel i7"}');
+      }
+    }
+
+    const warehouse = warehouseSelect.value.trim();
+    const qtyStr = qtyInput.value.trim();
+    const qtyNum = qtyStr === '' ? undefined : Number(qtyStr);
+
+    if (warehouse && qtyNum === undefined) return showError('If warehouse is set, quantity is required.');
+    if (!warehouse && qtyNum !== undefined) return showError('If quantity is set, warehouse is required.');
+    if (qtyNum !== undefined && (!Number.isFinite(qtyNum) || qtyNum < 0 || !Number.isInteger(qtyNum))) {
+      return showError('Quantity must be an integer ≥ 0.');
+    }
+
+    const product: Product = {
+      id,
+      name,
+      category,
+      supplierId,
+      price: priceNum,
+      ...(specs ? { specs } : {}),
+    };
+
+    opts.onSubmit({
+      product,
+      ...(warehouse && qtyNum !== undefined ? { initialStock: { warehouse, quantity: qtyNum } } : {}),
+    });
+  });
+
+  queueMicrotask(() => idInput.focus());
+
+  return form;
 }
