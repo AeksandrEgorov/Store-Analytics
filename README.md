@@ -1,94 +1,85 @@
-# Store Analytics — Task 1
+# Store Analytics
 
 ## Description
-Console application written in TypeScript that prints a Store Analytics report.
 
-The report includes:
-- products
-- suppliers
-- stock per warehouse
-- reviews
-- discounts
+Store Analytics is a TypeScript web application for managing products and stock.
 
-The output is formatted according to lecturers example in task 1.
+Consists of task 1 - console app (view product list in console of web app), view products and task 2 - web application
+
+Features:
+- Display product list
+- Add product via modal form
+- Validate input and prevent duplicate IDs
+- Search by name or ID
+- Sort by name, price or availability
+- Calculate stock status (IN_STOCK / LOW_STOCK / OUT_OF_STOCK)
+- Save data to LocalStorage
+- Restore data after page refresh
+
+---
+
+## Screenshot
+
+![App Screenshot](./src/images/image1.png)
+![App Screenshot](./src/images/image2.png)
 
 ---
 
 ## Project Structure
 
-index.html
-src/
-  data/
-    models/
-      category.ts
-      discount.ts
-      products.ts
-      review.ts
-      stock.ts
-      supplier.ts
-    productsData.ts
-  task1/
-    main.ts
-dist/
+```
+Store-Analytics/
+├─ index.html
+├─ src/
+│  ├─ data/
+│  │  ├─ productsData.ts
+│  │  └─ models/
+│  │     ├─ category.ts
+│  │     ├─ discount.ts
+│  │     ├─ product.ts
+│  │     ├─ review.ts
+│  │     ├─ stock.ts
+│  │     └─ supplier.ts
+│  ├─ task1/
+│  │  └─ main.ts
+│  └─ task2/
+│     ├─ main.ts
+│     └─ app/
+│        ├─ services/
+│        │  ├─ productService.ts
+│        │  └─ storage.ts
+│        ├─ ui/
+│        │  ├─ dom.ts
+│        │  ├─ events.ts
+│        │  ├─ modal.ts
+│        │  └─ render.ts
+│        └─ utils/
+│           └─ validators.ts
+```
 
----
+## Technologies Used
 
-## Requirements
-- Node.js (LTS recommended)
-- npm
-- TypeScript
+- **TypeScript** for application logic and type safety
+- **Bootstrap** for structure and styling
+- **Node.js/npm** for development tooling (TypeScript compiler, local server)
+- **LocalStorage API** for persisting product and stock data
+- Modern browser APIs (DOM, Fetch etc.)
 
----
+## Running the Project
 
-## How to run (Task 1)
+To view the web application (task 2), serve the project folder using a static file server. You can choose one of the following methods:
 
-1) Install dependencies  
-npm install --global typescript
+1. **Live Server extension** in VS Code
+   - Install the Live Server extension.  
+   - Right‑click `index.html` and select **Open with Live Server**.
 
-2) Compile TypeScript  
-npx tsc
+2. **npx serve** (requires Node.js/npm)
+   ```bash
+   npm install -g serve           
+   npx serve .                   
+   ```
+   Open `http://localhost:3000` (or the URL shown in the terminal) in your browser.
 
-3) Run the console app  
-node dist/task1/main.js in visual studio code
-or
-open index.html -> inspect element -> console
+The interface will display the product list with search, sort, and add‑product modal.  
+Data is stored in LocalStorage.
 
----
-
-## Example Output
-
-Products:
-
- - Dell XPS 15 [LAP-DEL-XPS15] | Electronics | supplier: Nordic Devices | available: 3 (IN_STOCK) | rating: 4.50 | specs: cpu=Intel i7, ram=16, storage=512, weight=1.8 | price: 1299.99 -> 1169.99
- - Logitech MX Master 3S [ACC-LOG-MX3] | Accessories | supplier: Euro Accessories | available: 9 (IN_STOCK) | rating: 4.67 | price: 99.50 -> 84.58
- - TypeScript for Beginners [BOOK-TS-BASICS] | Books | supplier: Baltic Books | available: 1 (LOW) | rating: 3.00 | specs: pages=320, language=EN | price: 39.90
- - USB-C Hub 8-in-1 [ACC-USB-C-HUB] | Accessories | supplier: Euro Accessories | available: 0 (OUT) | rating: no reviews | specs: ports=8, usbVersion=USB 3.2 | price: 59.00 -> 50.15
-
----
-
-## Implemented Rules
-
-Stock status:
-0 -> OUT  
-1..2 -> LOW  
-3+ -> IN_STOCK  
-
-Average rating:
-no reviews -> "no reviews"  
-with reviews -> average rating with 2 decimals  
-
-Discount:
-- applied by category
-- optional minRating
-- format: price: X -> Y
-
-Specifications:
-- printed as: specs: key=value, key=value
-- not printed if missing
-
----
-
-## Notes
-- All data is stored in src/data/productsData.ts
-- Interfaces and types are defined in src/data/models/
-- Task 1 entry point is src/task1/main.ts
