@@ -67,13 +67,16 @@ Store-Analytics/
 
 ## Running the Project
 
+Before running project, you need to compile it.
+1. Compile TypeScript: npx tsc
+
 To view the web application (task 2), serve the project folder using a static file server. You can choose one of the following methods:
 
-1. **Live Server extension** in VS Code
+2. **Live Server extension** in VS Code
    - Install the Live Server extension.  
    - Right‑click `index.html` and select **Open with Live Server**.
 
-2. **npx serve** (requires Node.js/npm)
+3. **npx serve** (requires Node.js/npm)
    ```bash
    npm install -g serve           
    npx serve .                   
